@@ -8,16 +8,88 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Sync from upstream
+      - name: Ensure upstream-sync label exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create "upstream-sync" --color "0075ca" --description "Aviso de cambios pendientes en el repo original" 2>/dev/null || true
+
+      - name: Check for upstream changes
+        id: check
         run: |
           git remote add upstream https://github.com/bilawalsidhu/gods-eye-view.git
           git fetch upstream
-          git checkout main
-          git merge upstream/main --ff-only
-          git push origin main
+
+          COMMITS=$(git log HEAD..upstream/main --oneline)
+          if [ -z "$COMMITS" ]; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            COMMITS_ESCAPED="${COMMITS//'%'/'%25'}"
+            COMMITS_ESCAPED="${COMMITS_ESCAPED//$'\n'/'%0A'}"
+            echo "commits=$COMMITS_ESCAPED" >> $GITHUB_OUTPUT
+            COUNT=$(echo "$COMMITS" | wc -l | tr -d ' ')
+            echo "count=$COUNT" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check for existing open issue
+        id: existing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          OPEN=$(gh issue list --label "upstream-sync" --state open --json number --jq '.[0].number // ""')
+          echo "issue_number=$OPEN" >> $GITHUB_OUTPUT
+
+      - name: Create or update issue
+        if: steps.check.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMITS: ${{ steps.check.outputs.commits }}
+          COUNT: ${{ steps.check.outputs.count }}
+          EXISTING: ${{ steps.existing.outputs.issue_number }}
+        run: |
+          BODY="## Hay $COUNT commit(s) nuevos en el repo original
+
+          Revisa los cambios antes de mergear manualmente para evitar conflictos con tus modificaciones (DGT España, speed cameras, fly-to Spain, etc.).
+
+          \`\`\`
+          $COMMITS
+          \`\`\`
+
+          **Para mergear manualmente:**
+          \`\`\`bash
+          git fetch upstream
+          git merge upstream/main
+          \`\`\`
+
+          *Actualizado automáticamente — $(date -u '+%Y-%m-%d %H:%M UTC')*"
+
+          if [ -n "$EXISTING" ]; then
+            gh issue edit "$EXISTING" \
+              --title "⬆️ Upstream tiene $COUNT cambio(s) pendiente(s)" \
+              --body "$BODY"
+          else
+            gh issue create \
+              --title "⬆️ Upstream tiene $COUNT cambio(s) pendiente(s)" \
+              --body "$BODY" \
+              --label "upstream-sync"
+          fi
+
+      - name: Close issue if in sync
+        if: steps.check.outputs.has_changes == 'false' && steps.existing.outputs.issue_number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EXISTING: ${{ steps.existing.outputs.issue_number }}
+        run: |
+          gh issue close "$EXISTING" \
+            --comment "✅ Upstream ya está en sync con tu rama. Cerrando automáticamente."
