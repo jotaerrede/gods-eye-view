@@ -17,7 +17,7 @@ import { CCTV_AMBIENT_CARD_MAX } from '../../data/cctvLod.js';
 // Timing and geometry constants
 // ---------------------------------------------------------------------------
 
-export const DEFAULT_UPDATE_INTERVAL_MS = 10000;
+export const DEFAULT_UPDATE_INTERVAL_MS = 3000;
 
 export const MIN_AUTO_HOP_SEC = 8;
 
@@ -27,7 +27,7 @@ export const HEALTH_SYNC_INTERVAL_MS = 7000;
 
 export const IDLE_FRAME_REFRESH_MS = 60000;
 
-export const PROJECTION_ACTIVE_REFRESH_MS = 10000;
+export const PROJECTION_ACTIVE_REFRESH_MS = 3000;
 
 export const PROJECTION_IDLE_REFRESH_MS = 60000;
 
