@@ -55,6 +55,10 @@ import {
   DEFAULT_CALGARY_MAX_SOURCES,
   CALGARY_DOWNTOWN,
   CALGARY_MAX_CATALOG_BYTES,
+  DGT_SPAIN_INVENTORY_URL,
+  DGT_SPAIN_IMAGE_ORIGINS,
+  DEFAULT_DGT_SPAIN_MAX_SOURCES,
+  DGT_SPAIN_ANCHORS,
   CCTV_SOURCE_FETCH_TIMEOUT_MS,
 } from './constants.js';
 import {
@@ -1591,6 +1595,124 @@ export async function loadCalgarySourcesFromOpenData() {
       '[CCTV] Calgary camera download error:',
       error?.message || error,
     );
+    return [];
+  }
+}
+
+/**
+ * Parse DGT Spain DATEX2 v3.7 XML into normalized camera source objects.
+ * Each <ns2:device> block carries image URL, coordinates, road name, province,
+ * and km point in namespaced child elements.
+ *
+ * @param {string} xml
+ * @returns {Array<object>}
+ */
+export function parseDgtSpainCameraXml(xml) {
+  const cameras = [];
+  const deviceRe =
+    /<[^:\s>]+:device\b[^>]*\bid="([^"]+)"[^>]*>([\s\S]*?)<\/[^:\s>]+:device>/g;
+  let match;
+  while ((match = deviceRe.exec(String(xml || ''))) !== null) {
+    const deviceId = match[1];
+    const body = match[2];
+    const urlMatch =
+      /<[^:\s>]*:?deviceUrl[^>]*>\s*([^<\s]+)\s*<\/[^:\s>]*:?deviceUrl>/i.exec(
+        body,
+      );
+    if (!urlMatch) continue;
+    const imageUrl = urlMatch[1].trim();
+    if (!DGT_SPAIN_IMAGE_ORIGINS.some((o) => imageUrl.startsWith(o))) continue;
+    const latMatch =
+      /<[^:\s>]*:?latitude[^>]*>\s*(-?\d+(?:\.\d+)?)\s*<\/[^:\s>]*:?latitude>/i.exec(
+        body,
+      );
+    const lonMatch =
+      /<[^:\s>]*:?longitude[^>]*>\s*(-?\d+(?:\.\d+)?)\s*<\/[^:\s>]*:?longitude>/i.exec(
+        body,
+      );
+    if (!latMatch || !lonMatch) continue;
+    const lat = toFiniteNumber(latMatch[1]);
+    const lon = toFiniteNumber(lonMatch[1]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+    // Spain bounding box (mainland + Canary Islands)
+    if (lat < 27.5 || lat > 44 || lon < -18.5 || lon > 5) continue;
+    const roadMatch =
+      /<[^:\s>]*:?roadName[^>]*>\s*([^<]+?)\s*<\/[^:\s>]*:?roadName>/i.exec(
+        body,
+      );
+    const provMatch =
+      /<[^:\s>]*:?province[^>]*>\s*([^<]+?)\s*<\/[^:\s>]*:?province>/i.exec(
+        body,
+      );
+    const kmMatch =
+      /<[^:\s>]*:?kilometerPoint[^>]*>\s*([^<]+?)\s*<\/[^:\s>]*:?kilometerPoint>/i.exec(
+        body,
+      );
+    const road = roadMatch ? roadMatch[1].trim() : '';
+    const province = provMatch ? provMatch[1].trim() : '';
+    const km = kmMatch ? kmMatch[1].trim() : '';
+    const nameParts = [road, km ? `km ${km}` : ''].filter(Boolean);
+    const name = nameParts.length ? nameParts.join(' ') : deviceId;
+    cameras.push({
+      id: `es-dgt-${deviceId}`,
+      name,
+      city: province || 'Spain',
+      cityId: 'spain',
+      provider: 'DGT España',
+      lat,
+      lon,
+      headingDeg: fallbackHeadingFromId(deviceId),
+      headingConfidence: 'low',
+      pitchDeg: -18,
+      fovDeg: 44,
+      rangeM: 145,
+      mountHeightM: 8,
+      groundElevationM: 650,
+      feedType: 'image',
+      url: imageUrl,
+      snapshotUrl: imageUrl,
+      sourceKind: 'dgt-datex',
+      license: 'DGT España / nap.dgt.es (open data)',
+    });
+  }
+  return cameras;
+}
+
+/**
+ * Fetch Spanish DGT traffic cameras from the Punto de Acceso Nacional DATEX2
+ * v3.7 feed. The XML inventory is keyless and publicly accessible.
+ *
+ * @returns {Promise<Array<object>>} Normalized camera source objects.
+ */
+export async function loadDgtSpainSourcesFromDatex() {
+  try {
+    const resp = await fetch(DGT_SPAIN_INVENTORY_URL, {
+      headers: {
+        Accept: 'application/xml,text/xml,*/*',
+        'User-Agent': 'gods-eye-view-cctv-proxy/1.0',
+        Referer: 'https://nap.dgt.es/',
+      },
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!resp.ok) {
+      console.warn('[CCTV] DGT Spain download failed:', resp.status);
+      return [];
+    }
+    const xml = await resp.text();
+    const cameras = parseDgtSpainCameraXml(xml);
+    const maxRaw = Number(
+      process.env.CCTV_DGT_SPAIN_MAX_SOURCES || DEFAULT_DGT_SPAIN_MAX_SOURCES,
+    );
+    const maxCount = Number.isFinite(maxRaw)
+      ? Math.max(8, Math.min(2000, Math.floor(maxRaw)))
+      : DEFAULT_DGT_SPAIN_MAX_SOURCES;
+    const prioritized = prioritizeSources(cameras, maxCount, DGT_SPAIN_ANCHORS);
+    console.log(
+      `[CCTV] Loaded DGT Spain camera sources: ${cameras.length} (using nearest ${prioritized.length})`,
+    );
+    return prioritized;
+  } catch (error) {
+    console.warn('[CCTV] DGT Spain download error:', error?.message || error);
     return [];
   }
 }

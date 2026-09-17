@@ -17,6 +17,7 @@ import {
   loadWarendorfSourcesFromCatalog,
   loadNswSourcesFromOpenData,
   loadCalgarySourcesFromOpenData,
+  loadDgtSpainSourcesFromDatex,
 } from './sources.js';
 
 /** Env kill switch: unset or anything but "0" means enabled. */
@@ -85,6 +86,11 @@ const LIVE_PACKS = [
     name: 'calgary',
     enabled: () => envEnabled('CCTV_CALGARY_ENABLED'),
     load: loadCalgarySourcesFromOpenData,
+  },
+  {
+    name: 'dgt-spain',
+    enabled: () => envEnabled('CCTV_DGT_SPAIN_ENABLED'),
+    load: loadDgtSpainSourcesFromDatex,
   },
 ];
 /**

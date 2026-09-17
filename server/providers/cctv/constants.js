@@ -13,7 +13,7 @@ export const DEFAULT_AUSTIN_MAX_SOURCES = 250;
  */
 export const DEFAULT_CCTV_MAX_SOURCES = 4000;
 /** Hard upper bound for CCTV_MAX_SOURCES; also sizes the health map. */
-export const CCTV_MAX_SOURCES_CEILING = 5000;
+export const CCTV_MAX_SOURCES_CEILING = 8000;
 /** Reference point for Austin camera prioritization (Congress & 6th). */
 export const AUSTIN_DOWNTOWN = { lat: 30.2672, lon: -97.7431 };
 /** Caltrans CCTV: one JSON feed per district, identical schema statewide. */
@@ -235,6 +235,28 @@ export const CALGARY_DOWNTOWN = { lat: 51.0461, lon: -114.0626 };
  * under 100 KB; this only exists so an upstream that streams an unbounded
  * body cannot be buffered without limit. */
 export const CALGARY_MAX_CATALOG_BYTES = 4 * 1024 * 1024;
+
+/** DGT Spain (Punto de Acceso Nacional): keyless DATEX2 v3.7 camera inventory.
+ * Covers the Spanish state road network except Basque Country and Catalonia. */
+export const DGT_SPAIN_INVENTORY_URL =
+  'https://nap.dgt.es/datex2/v3/dgt/DevicePublication/camaras_datex2_v37.xml';
+/** Allowed origins for DGT camera frame URLs. Only HTTPS DGT domains accepted. */
+export const DGT_SPAIN_IMAGE_ORIGINS = Object.freeze([
+  'https://etraffic.dgt.es/',
+  'https://infocar.dgt.es/',
+  'https://nap.dgt.es/',
+]);
+export const DEFAULT_DGT_SPAIN_MAX_SOURCES = 300;
+/** Prioritization anchors: the six largest Spanish cities by population,
+ * spread across the peninsula so a cap keeps national coverage. */
+export const DGT_SPAIN_ANCHORS = [
+  { lat: 40.4168, lon: -3.7038 }, // Madrid
+  { lat: 41.3851, lon: 2.1734 }, // Barcelona
+  { lat: 39.4699, lon: -0.3763 }, // Valencia
+  { lat: 37.3891, lon: -5.9845 }, // Sevilla
+  { lat: 43.263, lon: -2.935 }, // Bilbao
+  { lat: 41.6488, lon: -0.8891 }, // Zaragoza
+];
 
 /** Camera CATALOGS change rarely; 15 min keeps multi-megabyte upstream list refetches (Austin rows.json + 4 Caltrans districts + TfL + Ontario 511) infrequent. Frames are fetched per-request and are unaffected. */
 export const CCTV_SOURCE_CACHE_MS = 15 * 60 * 1000;
