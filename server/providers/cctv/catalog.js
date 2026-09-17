@@ -31,10 +31,14 @@ const envEnabled = (name) => String(process.env[name] || '1').trim() !== '0';
  * kill switch.
  */
 const LIVE_PACKS = [
-  { name: 'austin', enabled: () => true, load: loadAustinSourcesFromOpenData },
+  {
+    name: 'austin',
+    enabled: () => envEnabled('CCTV_AUSTIN_ENABLED'),
+    load: loadAustinSourcesFromOpenData,
+  },
   {
     name: 'caltrans',
-    enabled: () => true,
+    enabled: () => envEnabled('CCTV_CALTRANS_ENABLED'),
     load: loadCaltransSourcesFromOpenData,
   },
   {

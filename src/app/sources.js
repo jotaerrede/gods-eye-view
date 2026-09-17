@@ -10,9 +10,11 @@ import { configureInstallationSource } from '../data/militaryInstallations.js';
 import { configureSatelliteSource } from '../data/satellites.js';
 import { configureLaunchSource } from '../data/rocketLaunches.js';
 import { configureFirmsSource } from '../data/firmsHeatmap.js';
+import { configureSpeedCameraSource } from '../data/speedCameras.js';
 import { configureMilitaryRegistrySource } from '../data/militaryRegistry.js';
 const configure = {
   alpr: configureAlprSource,
+  speedCameras: configureSpeedCameraSource,
   cctv: configureCctvSource,
   radio: configureRadioSource,
   traffic: configureTrafficSource,

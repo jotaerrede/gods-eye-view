@@ -14,6 +14,7 @@ import { createApplicationInstallations } from './layers/militaryInstallations.j
 import { createApplicationSatellites } from './layers/satellites.js';
 import { createApplicationLaunches } from './layers/rocketLaunches.js';
 import { createApplicationAlpr } from './layers/alprCameras.js';
+import { createApplicationSpeedCameras } from './layers/speedCameras.js';
 import { createApplicationAwareness } from './layers/militaryAwareness.js';
 import { createApplicationFirms } from './layers/firms.js';
 import { createApplicationEarthquakes } from './layers/earthquakes.js';
@@ -41,6 +42,7 @@ const SOURCE_METHODS = Object.freeze({
   satellites: ['readGroup'],
   launches: ['getLaunches', 'getActiveTle'],
   alpr: ['fetch'],
+  speedCameras: ['fetch'],
   firms: ['getSnapshot'],
   earthquakes: ['getSnapshot'],
   cables: ['fetch'],
@@ -112,6 +114,7 @@ export function createApplicationCatalog({
         military,
         createApplicationEarthquakes({ source: sources.earthquakes }),
         createApplicationAlpr({ surface, source: sources.alpr }),
+        createApplicationSpeedCameras({ source: sources.speedCameras }),
         satellites,
         createApplicationLaunches({ source: sources.launches, satellites }),
         createApplicationTraffic({ source: sources.traffic }),
