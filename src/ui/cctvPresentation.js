@@ -154,10 +154,11 @@ export function _renderCctvState(state) {
         ? this._calBadgeLabel(activeCamera.calBadge)
         : '';
       const projLabel = state?.showProjection !== false ? 'MONITOR' : 'OFF';
-      const refreshSec = activeCamera.refreshMs
-        ? (activeCamera.refreshMs / 1000).toFixed(activeCamera.refreshMs < 10000 ? 1 : 0)
-        : null;
-      const refreshLabel = refreshSec ? ` · ${refreshSec}s/frame` : '';
+      const refreshLabel = activeCamera.refreshMs
+        ? ` · ${activeCamera.refreshMs >= 60000
+            ? (activeCamera.refreshMs / 60000).toFixed(1) + 'min/frame'
+            : (activeCamera.refreshMs / 1000).toFixed(1) + 's/frame'}`
+        : '';
       this._cctvMeta.textContent = `${activeCamera.city} · HDG ${Math.round(activeCamera.headingDeg)}° · FOV ${Math.round(activeCamera.fovDeg)}° · RANGE ${Math.round(activeCamera.rangeM)}m · ${projLabel}${refreshLabel}${calBadge ? ` · ${calBadge}` : ''} · ${provider}${credit}${statusMsg}`;
     } else if (cameras.length > 0) {
       this._cctvMeta.textContent = enabled
